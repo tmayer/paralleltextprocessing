@@ -113,17 +113,32 @@ class ParText():
         else:
             return self.wordforms
             
+    def wordforms_verses_count(
+        self
+        ):
+        """Returns a two-dimensional dictionary of wordforms and verses and how often the
+        wordform occurs in the verse."""
+        
+        wordforms_verses_counter = collections.defaultdict(lambda: collections.defaultdict(int))
+        wordforms_by_verses = self.wordforms_verses()
+        for wordform in wordforms_by_verses:
+            for verse in wordforms_by_verses[wordform]:
+                wordforms_verses_counter[wordform][verse] += 1
+                
+        return wordforms_verses_counter
+        
+            
     def wordforms_verses(
         self
         ):
         """Returns a dictionary of wordforms in which verses they occur.
         """
         
-        wordforms_by_verses = collections.defaultdict(set)
+        wordforms_by_verses = collections.defaultdict(list)
         
         for id,verse in self.verses:
             for word in verse:
-                wordforms_by_verses[word.lower()].add(id)
+                wordforms_by_verses[word.lower()].append(id)
                 
         return wordforms_by_verses
         
@@ -179,8 +194,9 @@ class ParText():
             
 if __name__ == "__main__":
     
-    text = ParText("deu",portions=[41])
+    text = ParText("deu")
     lexicon = text.get_lexicon()
+    
     
     """
     text1 = ParText("deu-x-bible-elberfelder1871-v1.txt")
