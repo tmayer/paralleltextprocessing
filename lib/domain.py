@@ -4,6 +4,7 @@ __date__="2014-04-29"
 import reader
 import settings
 import collections
+from math import sqrt
 
 def get_domain_distribution(triggers):
     """
@@ -22,7 +23,7 @@ def get_domain_distribution(triggers):
     
     for text,category,string,polarity in triggers:
         print(text,category,string,polarity)
-        t = reader.ParText(settings._data_dir + text)
+        t = reader.ParText(text)
         wordforms_by_verses = t.wordforms_verses()
         substrings_by_wordforms = t.substrings_wordforms()
         string = string.lower()
@@ -70,17 +71,17 @@ class Domain_distribution_comparison():
         wordforms_verses2 = text.wordforms_verses()
         verses = text.get_verses()
         self.domain = domain
+        self.text = text
         
         translation = collections.defaultdict(lambda: collections.defaultdict(int))
         
         for verse in domain:
             for word in verses[verse]:
                 translation[word][verse] += 1
-                         
+          
         self.translation = translation
         
     def jaccard(
-        self,
         ab,
         a,
         b,
@@ -89,7 +90,6 @@ class Domain_distribution_comparison():
         return 2*ab/(a+b)
         
     def dice(
-        self,
         ab,
         a,
         b,
@@ -97,28 +97,40 @@ class Domain_distribution_comparison():
         ):
         return ab
                 
-    def get_distance(
+    def get_distances(
         self,
-        ab,
-        a,
-        b,
-        n,
-        aold,
         method=jaccard
         ):
         
-        wordforms = self.translations.keys()
+        wordforms = self.translation.keys()
+        wordforms_dict = self.text.get_wordforms()
         
+        best_candidate = (0,'')
+        domain = self.domain
+        a = sum([domain[d] for d in domain])
+        values = dict()
         
-        return method(ab,a,b,n)
+        for wordform in wordforms:
+            b = wordforms_dict[wordform]
+            ab = sum([domain[d] * self.translation[wordform][d] for d in domain])
+            n = len(self.text)
+            #print(wordform)
+            #print(a,b,ab,n)
+            currvalue = 2*ab/(a+b)
+            values[wordform] = (a,b,ab,n,currvalue)
+            if currvalue > best_candidate[0]:
+                best_candidate = (currvalue,wordform)
+        
+        return best_candidate, values
         
 
         
             
 if __name__ == "__main__":
     
-    dv = get_domain_distribution([("eng-x-bible-darby-v1.txt","m","n't",1),
-        ("eng-x-bible-darby-v1.txt","w","not",1)
+    dv = get_domain_distribution([("eng","m","n't",1),
+        ("eng","w","not",1)
         ])
-    text = reader.ParText("deu-x-bible-elberfelder1871-v1.txt")
+    text = reader.ParText("deu")
     d = Domain_distribution_comparison(text,dv)
+    cand, values = d.get_distances()

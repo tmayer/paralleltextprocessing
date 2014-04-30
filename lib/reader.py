@@ -7,6 +7,8 @@ from scipy.sparse import lil_matrix, csc_matrix, coo_matrix
 from scipy.io import mmread, mmwrite
 import scipy.special
 import numpy as np
+import re
+import os
 
 class ParText():
     """Reads a file in the BibleText format and provides several ways to access the text.
@@ -23,10 +25,18 @@ class ParText():
         filename,
         commentmarker="#",
         sep="\t",
-        enc="utf-8"
+        enc="utf-8",
+        portions=range(0,67)
         ):
         
         self.iso = filename[:3]
+        
+        
+        # get shortcuts
+        if re.match('^[a-zA-Z]{3}$',filename):
+            bible_files = [f for f in os.listdir(settings._data_dir) if not f.startswith('.')]
+            iso_by_bible = {f[:3]:f for f in bible_files}
+            filename = iso_by_bible[filename]
         
         # open file
         fh = open(settings._data_dir + filename,'r',encoding=enc).readlines()
@@ -34,15 +44,20 @@ class ParText():
         # collect all verses    
         self.verses = [(int(items[0].strip()),items[1].strip().lower().split()) for line in fh 
                     for items in [line.split(sep,1)] 
-                    if not line.strip().startswith(commentmarker)] 
+                    if not line.strip().startswith(commentmarker)
+                    if int(line.strip()[:2]) in portions] 
                     
         self.versedict = {v[0]:v[1] for v in self.verses}
                     
     def __getitem__(self,id):
         """Returns the text of the verse given by the verse id.
         """
-        
         return self.versedict[id]
+        
+    def __len__(self):
+        """Returns the length of the parallel text in number of verses.
+        """
+        return len(self.verses)
     
     def get_verses(
         self,
@@ -164,7 +179,7 @@ class ParText():
             
 if __name__ == "__main__":
     
-    text = ParText("../data/deu-x-bible-elberfelder1871-v1.txt")
+    text = ParText("deu",portions=[41])
     lexicon = text.get_lexicon()
     
     """
