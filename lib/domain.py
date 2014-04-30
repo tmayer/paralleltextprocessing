@@ -136,7 +136,7 @@ class Domain_distribution_comparison():
                 
     def get_distances(
         self,
-        method=associationmeasures.jaccard
+        method=measures.jaccard
         ):
         
         wordforms = self.translation.keys()
@@ -161,7 +161,7 @@ class Domain_distribution_comparison():
         
         return best_candidate, values
         
-    def recursive_search(self,method=associationmeasures.jaccard,thresh=0.5):
+    def recursive_search(self,method=measures.jaccard,thresh=0.5):
         pass
         
         
@@ -174,4 +174,4 @@ if __name__ == "__main__":
     dv = domain_distribution([("eng","w","not",1)])
     text = reader.ParText("deu",portions=range(40,67))
     d = Domain_distribution_comparison(text,dv)
-    cand, values = d.get_distances(method=associationmeasures.tscorenormalized)
+    cand, values = d.get_distances(method=measures.tscorenormalized)
