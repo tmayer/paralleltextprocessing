@@ -69,6 +69,7 @@ class Domain_distribution_comparison():
     
         wordforms_verses2 = text.wordforms_verses()
         verses = text.get_verses()
+        self.domain = domain
         
         translation = collections.defaultdict(lambda: collections.defaultdict(int))
         
@@ -77,8 +78,42 @@ class Domain_distribution_comparison():
                 translation[word][verse] += 1
                          
         self.translation = translation
+        
+    def jaccard(
+        self,
+        ab,
+        a,
+        b,
+        n
+        ):
+        return 2*ab/(a+b)
+        
+    def dice(
+        self,
+        ab,
+        a,
+        b,
+        n
+        ):
+        return ab
                 
-                
+    def get_distance(
+        self,
+        ab,
+        a,
+        b,
+        n,
+        aold,
+        method=jaccard
+        ):
+        
+        wordforms = self.translations.keys()
+        
+        
+        return method(ab,a,b,n)
+        
+
+        
             
 if __name__ == "__main__":
     
