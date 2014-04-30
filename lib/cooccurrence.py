@@ -15,11 +15,15 @@ def cooccurrence(text1,text2):
     """
     
     translation = collections.defaultdict(lambda: collections.defaultdict(int))
+    verses1 = text1.get_verses()
+    verses2 = text2.get_verses()
     
-    for id,verse1 in text1.verses:
-        if id in text2.verses:
+    for id,verse1 in verses1:
+        #print(id,text2.verses[id])
+        if id in verses2:
             words1 = list({s for s in verse1.split() if s.strip() != ''})
             words2 = list({s for s in text2[id].split() if s.strip() != ''})
+            print(words1,words2)
             for word1 in words1:
                 for word2 in words2:
                     translation[word1][word2] += 1
@@ -49,5 +53,5 @@ if __name__ == "__main__":
     print("reading text2...")
     text2 = reader.ParText("../data/eng-x-bible-darby-v1.txt")
     print("counting cooccurrences...")
-    #translation = cooccurrence(text1,text2)
-    tmatrix,wf1,wf2 = matrix_cooccurrence(text1,text2)
+    translation = cooccurrence(text1,text2)
+    #tmatrix,wf1,wf2 = matrix_cooccurrence(text1,text2)

@@ -2,6 +2,7 @@ __author__="Thomas Mayer"
 __date__="2014-04-22"
 
 import collections
+import settings
 from scipy.sparse import lil_matrix, csc_matrix, coo_matrix
 from scipy.io import mmread, mmwrite
 import scipy.special
@@ -11,7 +12,7 @@ class ParText():
     """Reads a file in the BibleText format and provides several ways to access the text.
     Parameters:
     =============
-    filename: name of the file to be read
+    filename: name of the file to be read (first three letters must indicate ISO 639-3 code)
     commentmarker: character that marks a comment line 
     separator: character that separates Bible IDs from the actual text
     enc: encoding of the file (default: UTF-8)
@@ -25,14 +26,23 @@ class ParText():
         enc="utf-8"
         ):
         
+        self.iso = filename[:3]
         
         # open file
-        fh = open(filename,'r',encoding=enc).readlines()
+        fh = open(settings._data_dir + filename,'r',encoding=enc).readlines()
         
         # collect all verses    
-        self.verses = [(int(items[0].strip()),items[1].strip()) for line in fh 
+        self.verses = [(int(items[0].strip()),items[1].strip().lower().split()) for line in fh 
                     for items in [line.split(sep,1)] 
                     if not line.strip().startswith(commentmarker)] 
+                    
+        self.versedict = {v[0]:v[1] for v in self.verses}
+                    
+    def __getitem__(self,id):
+        """Returns the text of the verse given by the verse id.
+        """
+        
+        return self.versedict[id]
     
     def get_verses(
         self,
@@ -58,7 +68,7 @@ class ParText():
         
         lex = collections.defaultdict(set)
         for id,verse in self.verses:
-            for word in verse.split():
+            for word in verse:
                 lex[word].add(id)
                 
         for l in lex:
@@ -79,8 +89,7 @@ class ParText():
         # collect all wordforms (types and tokens)
         self.wordforms = collections.defaultdict(int)
         for id,verse in self.verses:
-            words = verse.split()
-            for word in verse.split():
+            for word in verse:
                 if word.strip() != '': self.wordforms[word] += 1
            
         
@@ -88,6 +97,37 @@ class ParText():
             return sorted(self.wordforms.keys())
         else:
             return self.wordforms
+            
+    def wordforms_verses(
+        self
+        ):
+        """Returns a dictionary of wordforms in which verses they occur.
+        """
+        
+        wordforms_by_verses = collections.defaultdict(set)
+        
+        for id,verse in self.verses:
+            for word in verse:
+                wordforms_by_verses[word.lower()].add(id)
+                
+        return wordforms_by_verses
+        
+    def substrings_wordforms(
+        self
+        ):
+        """Returns a dictionary of substrings in which wordforms they occur.
+        """
+        
+        substrings_by_wordforms = collections.defaultdict(set)
+        wordforms = self.get_wordforms()
+        
+        for word in wordforms:
+            word = word.lower()
+            for i in range(len(word)+1):
+                for j in range(i+1,len(word)+1):
+                    substrings_by_wordforms[word[i:j]].add(word)
+                    
+        return substrings_by_wordforms
             
     def get_verseids(
         self
@@ -110,7 +150,7 @@ class ParText():
         wordforms_by_number = {w: i for i,w in enumerate(wordforms)}
         wfcounter = 0
         for id,verse in self.verses:
-            for word in verse.split():
+            for word in verse:
                 #words_by_verses[word].append(id)
                 rowdata.append(wordforms_by_number[word])
                 coldata.append(id)
@@ -123,15 +163,15 @@ class ParText():
         
             
 if __name__ == "__main__":
-    """
+    
     text = ParText("../data/deu-x-bible-elberfelder1871-v1.txt")
     lexicon = text.get_lexicon()
     
     """
-    text1 = ParText("../data/deu-x-bible-elberfelder1871-v1.txt")
+    text1 = ParText("deu-x-bible-elberfelder1871-v1.txt")
     matrix1,wordforms1 = text1.get_matrix()
     print("and again...")
-    text2 = ParText("../data/eng-x-bible-darby-v1.txt")
+    text2 = ParText("eng-x-bible-darby-v1.txt")
     matrix2,wordforms2 = text2.get_matrix()
     print("collecting common verses...")
     verseids1 = text1.get_verseids()
@@ -146,7 +186,7 @@ if __name__ == "__main__":
     vector1 = matrix1.sum(1)
     vector2 = matrix2.sum(1)
     matrix_exp = np.outer(vector1,vector2) / len(common_verseids)
-    
+    """
     
 
     

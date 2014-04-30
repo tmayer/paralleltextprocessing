@@ -1,4 +1,4 @@
 pypar
 =====
 
-Python Parallel Text Processing
+PYthon PARallel Text Processing
