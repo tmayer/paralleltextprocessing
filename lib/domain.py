@@ -102,7 +102,7 @@ def domain_distribution(triggers):
             
     return domain_dict
     
-class Domain_distribution_comparison():
+class DomainDistComp():
 
     def __init__(
         self,
@@ -111,7 +111,8 @@ class Domain_distribution_comparison():
         paradigm=0,
         threshold=1,
         slots=1,
-        extracted_types="wordforms"
+        extracted_types="wordforms",
+        domain_name = "x"
         ):
         """Compares a given text to a domain (or search) distribution.
         Parameters:
@@ -124,6 +125,8 @@ class Domain_distribution_comparison():
         verses = text.get_verses()
         self.domain = domain
         self.text = text
+        self.domain_name = domain_name
+        self.extracted_types = extracted_types
         
         translation = collections.defaultdict(lambda: collections.defaultdict(int))
         
@@ -134,7 +137,7 @@ class Domain_distribution_comparison():
           
         self.translation = translation
                 
-    def get_distances(
+    def extract_marker(
         self,
         method=measures.jaccard
         ):
@@ -146,32 +149,87 @@ class Domain_distribution_comparison():
         domain = self.domain
         a = sum([domain[d][1] for d in domain])
         values = dict()
+        n = len(self.text)
         
         for wordform in wordforms:
             b = len(wordforms_dict[wordform])
             ab = sum([domain[d][1] * self.translation[wordform][d] for d in domain])
             #ab = sum([self.translation[wordform][d] for d in domain])
-            n = len(self.text)
             #print(wordform)
             #print(a,b,ab,n)
             currvalue = method(ab,a,b,n)
-            values[wordform] = (a,b,ab,n,currvalue)
+            #values[wordform] = (a,b,ab,n,currvalue)
             if currvalue > best_candidate[0]:
                 best_candidate = (currvalue,wordform)
         
-        return best_candidate, values
+        return best_candidate
         
-    def recursive_search(self,method=measures.jaccard,thresh=0.5):
+    def iterative_search(self,method=measures.jaccard,thresh=0.5):
+        list_of_markers = list()
+        best_cand = self.extract_marker(method=method)
+        marker = Marker(self.domain_name,self.text.filename,self.extracted_types,best_cand[1],
+            0,0,best_cand[0],1,1)
+        list_of_markers.append(marker)
+        
+        marker_list = MarkerList(self.domain_name,list_of_markers)
+        return marker_list
+        
+class Marker():
+
+    def __init__(self,domain,text,type,form,slot,rank,extraction_value,amplitude,dedication):
+        """
+        domain: 
+        text: name of text where the marker has been extracted
+        type: w (word), m (morph), r (regular expression), f (taken from file with distribution)
+        form: actual form of the marker
+        slot: 
+        rank: rank within the slot
+        extraction_value: value taken from the association measure
+        amplitude: relationship of marker within the domain
+        dedication: relationship of marker in the domain in comparison to other uses of the marker
+        """
+        
+        self.domain = domain
+        self.text = text
+        self.type = type
+        self.form = form
+        self.slot = slot
+        self.rank = rank
+        self.extraction_value = extraction_value
+        self.amplitude = amplitude
+        self.dedication = dedication
+        
+    def __str__(self):
+        
+        output_list = [self.domain,self.type,self.form,self.slot,self.rank,self.extraction_value,
+            self.amplitude,self.dedication]
+        return "{} {} {} {} {} {} {} {}".format(*output_list)
+    
+    
+class MarkerList():
+
+    def __init__(self,domain_name,marker_list):
+        self.marker_list = marker_list
+        self.domain_name = domain_name
+
+    def plot(self):
+        self.domain_name
+        for marker in self.marker_list:
+            pass
+        
+    def load(self,filename):
         pass
         
-        
-        
+    def save(self,filename):
+        pass
 
-        
+    def __str__(self):
+        for marker in self.marker_list:
+            return str(marker)
             
 if __name__ == "__main__":
     
     dv = domain_distribution([("eng","w","not",1)])
     text = reader.ParText("deu",portions=range(40,67))
-    d = Domain_distribution_comparison(text,dv)
-    cand, values = d.get_distances(method=measures.tscorenormalized)
+    d = DomainDistComp(text,dv,domain_name="negation")
+    ml = d.iterative_search(method=measures.tscorenormalized)

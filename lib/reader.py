@@ -30,6 +30,7 @@ class ParText():
         ):
         
         self.iso = filename[:3]
+        self.filename = filename
         
         
         # get shortcuts
