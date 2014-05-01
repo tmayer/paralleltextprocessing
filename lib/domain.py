@@ -6,6 +6,7 @@ import settings
 import collections
 from math import sqrt, factorial
 import measures
+from copy import copy
 
 def get_domain_distribution(triggers):
     """
@@ -111,7 +112,7 @@ class DomainDistComp():
         paradigm=0,
         threshold=1,
         slots=1,
-        extracted_types="wordforms",
+        extracted_types="w",
         domain_name = "x"
         ):
         """Compares a given text to a domain (or search) distribution.
@@ -142,41 +143,125 @@ class DomainDistComp():
         method=measures.jaccard
         ):
         
-        wordforms = self.translation.keys()
-        wordforms_dict = self.text.get_lexicon()
         
         best_candidate = (0,'')
-        domain = self.domain
+        domain = self.copied_domain
         a = sum([domain[d][1] for d in domain])
+        a_old = sum([self.domain[d][1] for d in self.domain])
         values = dict()
         n = len(self.text)
         
-        for wordform in wordforms:
-            b = len(wordforms_dict[wordform])
+        for wordform in self.wordforms:
+            b = len(self.wordforms_dict[wordform])
             ab = sum([domain[d][1] * self.translation[wordform][d] for d in domain])
-            #ab = sum([self.translation[wordform][d] for d in domain])
-            #print(wordform)
-            #print(a,b,ab,n)
             currvalue = method(ab,a,b,n)
-            #values[wordform] = (a,b,ab,n,currvalue)
-            if currvalue > best_candidate[0]:
+            
+            # check whether the entire domain would be more suitable for the wordform
+            entire_value = method(ab,a_old,b,n)
+            if entire_value > currvalue:
+                continue
+            
+            if currvalue >= best_candidate[0]:
                 best_candidate = (currvalue,wordform)
+                
+        self.extracted_markers.append(best_candidate[1])
+        #print(best_candidate[1],len(self.wordforms))
+        #if best_candidate != None:
+        self.wordforms.remove(best_candidate[1])
         
         return best_candidate
         
-    def iterative_search(self,method=measures.jaccard,thresh=0.5):
+    def iterative_search(self,method=measures.jaccard,thresh=0.2):
+        # define variables for iteration
         list_of_markers = list()
-        best_cand = self.extract_marker(method=method)
-        marker = Marker(self.domain_name,self.text.filename,self.extracted_types,best_cand[1],
-            0,0,best_cand[0],1,1)
-        list_of_markers.append(marker)
         
+        self.wordforms = list(self.translation.keys())
+        self.wordforms_dict = self.text.get_lexicon()
+        self.copied_translation = copy(self.translation)
+        self.extracted_markers = list()
+        self.current_slot = 0
+        
+        # iteration part
+        while True:
+            self.copied_domain = copy(self.domain)
+            self.current_rank = 0
+        
+            while True:
+                #print(self.wordforms)
+                if len(self.wordforms) == 0:
+                    break
+                best_cand = self.extract_marker(method=method)
+                if best_cand[0] < thresh:
+                    self.current_slot += 1
+                    break
+                
+                print(best_cand)
+                
+                # clean up the rest domain to remove marker entries
+                marker_to_remove = best_cand[1]
+                curr_verses = list(self.copied_domain.keys())
+                for d in curr_verses:
+                    number_occurrences = self.copied_translation[marker_to_remove][d]
+                    occurrences_in_domain = self.copied_domain[d][0]
+                    diff = occurrences_in_domain - number_occurrences
+                    if diff == 0:
+                        del self.copied_domain[d]
+                    elif diff > 0:
+                        self.copied_domain[d] = (diff,1)
+                    else:
+                        print("Error: diff smaller than zero!")
+                    
+                
+                marker = Marker(self.domain_name,self.text.filename,self.text.iso,self.extracted_types,
+                    best_cand[1],self.current_slot,self.current_rank,best_cand[0],1,1)
+                self.current_rank += 1
+                list_of_markers.append(marker)
+                
+            if self.current_rank == 0:
+                break
+            
+        
+        """
+        # iteration part
+        while True:
+            #print(self.wordforms)
+            if len(self.wordforms) == 0:
+                break
+            best_cand = self.extract_marker(method=method)
+            if best_cand[0] < thresh:
+                self.current_slot += 1
+                break
+            
+            print(best_cand)
+            
+            # clean up the rest domain to remove marker entries
+            marker_to_remove = best_cand[1]
+            curr_verses = list(self.copied_domain.keys())
+            for d in curr_verses:
+                number_occurrences = self.copied_translation[marker_to_remove][d]
+                occurrences_in_domain = self.copied_domain[d][0]
+                diff = occurrences_in_domain - number_occurrences
+                if diff == 0:
+                    del self.copied_domain[d]
+                elif diff > 0:
+                    self.copied_domain[d] = (diff,1)
+                else:
+                    print("Error: diff smaller than zero!")
+                
+            
+            marker = Marker(self.domain_name,self.text.filename,self.text.iso,self.extracted_types,
+                best_cand[1],self.current_slot,self.current_rank,best_cand[0],1,1)
+            self.current_rank += 1
+            list_of_markers.append(marker)
+        """
+        
+        # return
         marker_list = MarkerList(self.domain_name,list_of_markers)
         return marker_list
         
 class Marker():
 
-    def __init__(self,domain,text,type,form,slot,rank,extraction_value,amplitude,dedication):
+    def __init__(self,domain,text,iso,type,form,slot,rank,extraction_value,amplitude,dedication):
         """
         domain: 
         text: name of text where the marker has been extracted
@@ -191,6 +276,7 @@ class Marker():
         
         self.domain = domain
         self.text = text
+        self.iso = iso
         self.type = type
         self.form = form
         self.slot = slot
@@ -214,8 +300,9 @@ class MarkerList():
 
     def plot(self):
         self.domain_name
-        for marker in self.marker_list:
-            pass
+        marker_list = sorted(self.marker_list,key=lambda x: (x.slot,x.rank))
+        for m in marker_list:
+            print(m.slot,m.rank)
         
     def load(self,filename):
         pass
@@ -224,12 +311,17 @@ class MarkerList():
         pass
 
     def __str__(self):
+        output_lines = list()
         for marker in self.marker_list:
-            return str(marker)
+            output_list = [marker.domain,marker.type,marker.form,marker.slot,marker.rank,
+            marker.extraction_value,
+            marker.amplitude,marker.dedication]
+            output_lines.append("{:<20} {:<5} {:<20} {:>2} {:>2} {:<25} {:>2} {:>2}".format(*output_list))
+        return "\n".join(output_lines)
             
 if __name__ == "__main__":
     
-    dv = domain_distribution([("eng","w","not",1)])
+    dv = domain_distribution([("eng","w","went",1)])
     text = reader.ParText("deu",portions=range(40,67))
     d = DomainDistComp(text,dv,domain_name="negation")
-    ml = d.iterative_search(method=measures.tscorenormalized)
+    ml = d.iterative_search(method=measures.jaccard,thresh=0.1)
