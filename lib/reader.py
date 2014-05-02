@@ -42,6 +42,11 @@ class ParText():
         # open file
         fh = open(settings._data_dir + filename,'r',encoding=enc).readlines()
         
+        pat = re.compile("[‚<>.;,:?¿‹›!()]") 
+        fh = "\t\t".join(fh)
+        fh = re.sub(pat,'',fh)
+        fh = fh.split("\t\t")
+        
         # collect all verses    
         self.verses = [(int(items[0].strip()),items[1].strip().lower().split()) for line in fh 
                     for items in [line.split(sep,1)] 

@@ -1,0 +1,6 @@
+File	marker_type	marker	polarity
+eng	w	not	
+fra	w	pas
+deu	w	nicht
+eng	w	but	1
+eng	m	n't
