@@ -112,15 +112,98 @@ class DomainDist():
         input_markers = list()
         for line in fh[1:]:
             parameters = line.strip().split('\t')
-            polarity = '0'
+            polarity = 0
             if len(parameters) == 4: polarity = parameters[3]
             marker = InputMarker(domain_name,parameters[0],parameters[0][:3],parameters[1],
-                parameters[2],polarity)
+                parameters[2],int(polarity))
             #text,iso,type,form,
             input_markers.append(marker)
             
-        # sort markers
+        # sort markers to make sure that negative markers
         input_markers.sort(key=lambda x: (x.text,x.polarity))
+        self.input_markers = input_markers
+        
+        # make dictionary with text as key and markers as values
+        text_by_markers = collections.defaultdict(list)
+        for input_marker in input_markers:
+            text_by_markers[input_marker.text].append(input_marker)
+            
+        self.text_by_markers = text_by_markers
+        print(text_by_markers)
+        
+        def addtodict(list_of_verses):
+            for verse in list_of_verses:
+                domain_verses[verse] += 1
+        def remfromdict(list_of_verses):
+            for verse in list_of_verses:
+                domain_verses[verse] = 0
+                
+        domain_verses_texts = dict()
+        domain_verses_by_texts = collections.defaultdict(lambda: collections.defaultdict(float))
+        all_relevant_verses = set()
+        domain_dist = dict()
+        
+        # go through each text and extract the distribution
+        for text in text_by_markers:
+            t = reader.ParText(text,portions=range(40,67)) # only NT for the time being
+            wordforms_by_verses = t.wordforms_verses()
+            substrings_by_wordforms = t.substrings_wordforms()
+            
+            domain_verses = collections.defaultdict(int)
+            markers = list()
+            
+            # go through each marker in the respective text
+            for marker in text_by_markers[text]:
+                print(marker)
+                string = marker.form
+                category = marker.type
+                polarity = marker.polarity
+                print(polarity)
+                if polarity == 0: markers.append(string) 
+                if category.lower() == "w":
+                    if polarity == 1:
+                        remfromdict(wordforms_by_verses[string])
+                    else:
+                        addtodict(wordforms_by_verses[string])
+                elif category.lower() == "m":
+                    string_wordforms = substrings_by_wordforms[string]
+                    for string_wordform in string_wordforms:
+                        string_verses = wordforms_by_verses[string_wordform]
+                        if polarity == 1:
+                            remfromdict(string_verses)
+                        else:
+                            addtodict(string_verses)
+                elif category.lower() == "r":
+                    pass
+                else:
+                    print("Error: This marker category does not exist!")
+            
+            # normalize all extracted verses by the number of markers that are present in there
+            domain_verses_normalized = dict()
+            for verse in domain_verses:
+                if domain_verses[verse] > 0:
+                    types_in_verse = t[verse]
+                    markers_in_verse = sum(int(m in types_in_verse) for m in markers)
+                    domain_verses_normalized[verse] = markers_in_verse/len(markers)
+                    
+                    domain_verses_by_texts[verse][text] = markers_in_verse/len(markers)
+                    print(text,verse,markers_in_verse,domain_verses[verse],markers,markers_in_verse/len(markers))
+                    
+            domain_verses_texts[text] = domain_verses
+            all_relevant_verses.update(domain_verses.keys())
+            
+        # normalize the individual values over all texts
+        for verse in all_relevant_verses:
+            count = 0 
+            value = 0
+            for t in domain_verses_texts:
+                if verse in domain_verses_texts[t]:
+                    count =+ 1
+                    value += domain_verses_texts[t][verse]
+            domain_dist[verse] = value/count
+            
+        self.domain_dist = domain_dist
+        self.domain_verses_by_texts = domain_verses_by_texts
         
     
 class DomainDistComp():
@@ -297,7 +380,11 @@ class InputMarker(Marker):
         self.type = type
         self.form = form
         self.polarity = polarity
-    
+        
+    def __str__(self):
+        
+        output_list = [self.domain,self.text,self.type,self.form,self.polarity]
+        return "{} {} {} {} {}".format(*output_list)
     
 class MarkerList():
 
