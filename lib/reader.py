@@ -34,7 +34,8 @@ class ParText():
         # open file
         fh = open(settings._data_dir + filename,'r',encoding=enc).readlines()
         
-        pat = re.compile("[‚<>.;,:?¿‹›!()]") 
+        # clean up all punctuation marks TODO: find a better method to remove all non-letters!
+        pat = re.compile("[“”‘’`´“”‘’`´‚<>.;,:?¿‹›!()\[\]—\"„§$%&\/\=_{}]") 
         fh = "\t\t".join(fh)
         fh = re.sub(pat,'',fh)
         fh = fh.split("\t\t")
