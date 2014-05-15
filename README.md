@@ -31,6 +31,20 @@ search terms are listed:
     print(d)
 ```
 
+* save the distribution to a tab separated file (".tsv")
+
+```
+    d.save()
+```
+
+* reload a saved distribution in tsv format from a given file
+
+```
+    d1 = domain.DomainDist("negation","negation_dist.tsv")
+```
+
+## 2. Compare a given DomainDist to a Bible text file
+
 * compare it to a given text in ParText format:
 
 ```
