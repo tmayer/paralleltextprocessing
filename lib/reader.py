@@ -20,18 +20,10 @@ class ParText():
     enc: encoding of the file (default: UTF-8)
     """
     
-    def __init__(
-        self,
-        filename,
-        commentmarker="#",
-        sep="\t",
-        enc="utf-8",
-        portions=range(0,67)
-        ):
+    def __init__(self,filename,commentmarker="#",sep="\t",enc="utf-8",portions=range(0,67)):
         
         self.iso = filename[:3]
         self.filename = filename
-        
         
         # get shortcuts
         if re.match('^[a-zA-Z]{3}$',filename):
@@ -65,10 +57,7 @@ class ParText():
         """
         return len(self.verses)
     
-    def get_verses(
-        self,
-        format="dict"
-        ):
+    def get_verses(self,format="dict"):
         """Returns the verses of the parallel text
         Parameters:
         ==============
@@ -80,9 +69,14 @@ class ParText():
         else:
             return dict(self.verses)
             
-    def get_lexicon(
-        self
-        ):
+    def get_verses_strings(self):
+        """
+        Returns a list of tuples with verse ID and verse text as string (ID,text).
+        """
+        
+        return [(v[0],' '.join(v[1])) for v in self.verses]
+            
+    def get_lexicon(self):
         """Returns the wordforms of the text together with the information in which verses they
         occur. 
         """
@@ -97,10 +91,7 @@ class ParText():
                 
         return lex
             
-    def get_wordforms(
-        self,
-        format="types"
-        ):
+    def get_wordforms(self,format="types"):
         """Returns the wordforms (types or tokens) of the parallel text.
         Parameters:
         ===========
@@ -119,9 +110,7 @@ class ParText():
         else:
             return self.wordforms
             
-    def wordforms_verses_count(
-        self
-        ):
+    def wordforms_verses_count(self):
         """Returns a two-dimensional dictionary of wordforms and verses and how often the
         wordform occurs in the verse."""
         
@@ -134,9 +123,7 @@ class ParText():
         return wordforms_verses_counter
         
             
-    def wordforms_verses(
-        self
-        ):
+    def wordforms_verses(self):
         """Returns a dictionary of wordforms in which verses they occur.
         """
         
@@ -148,9 +135,7 @@ class ParText():
                 
         return wordforms_by_verses
         
-    def substrings_wordforms(
-        self
-        ):
+    def substrings_wordforms(self):
         """Returns a dictionary of substrings in which wordforms they occur.
         """
         
@@ -165,16 +150,12 @@ class ParText():
                     
         return substrings_by_wordforms
             
-    def get_verseids(
-        self
-        ):
+    def get_verseids(self):
         """Returns the verse Ids for this parallel text."""
         
         return sorted([v[0] for v in self.verses])
         
-    def get_matrix(
-        self
-        ):
+    def get_matrix(self):
         """Returns a sparse matrix with verse IDs as row names and words as column names where
         each cell indicates how many times the word occurs in the respective verse."""
 
@@ -201,7 +182,6 @@ class ParText():
 if __name__ == "__main__":
     
     text = ParText("deu")
-    lexicon = text.get_lexicon()
     
     
     """

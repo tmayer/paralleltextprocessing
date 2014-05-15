@@ -7,106 +7,34 @@ import collections
 from math import sqrt, factorial
 import measures
 from copy import copy
-
-def get_domain_distribution(triggers):
-    """
-    Parameters:
-    ===========
-    triggers: list of triggers. Each trigger has four parts:
-        1) text: the text where the trigger should be searched for
-        2) category: category of the trigger (Word w, Morph m, Regular expression r)
-        3) string: the actual string that should be searched for (either a word, character sequence
-            or a regular expression
-        4) polarity: whether the trigger should ignore (0) the resp. verse or include (1) it 
-            in the domain
-    """
-    
-    domain_verses = set()
-    
-    for text,category,string,polarity in triggers:
-        print(text,category,string,polarity)
-        t = reader.ParText(text,portions=range(40,67))
-        wordforms_by_verses = t.wordforms_verses()
-        substrings_by_wordforms = t.substrings_wordforms()
-        string = string.lower()
-        
-        if category.lower() == "w":
-            if polarity == 0:
-                domain_verses.difference_update(wordforms_by_verses[string])
-            else:
-                domain_verses.update(wordforms_by_verses[string])
-        elif category.lower() == "m":
-            string_wordforms = substrings_by_wordforms[string]
-            for string_wordform in string_wordforms:
-                string_verses = wordforms_by_verses[string_wordform]
-                if polarity == 0:
-                    domain_verses.difference_update(string_verses)
-                else:
-                    domain_verses.update(string_verses)
-        elif category.lower() == "r":
-            pass
-        else:
-            print("Error!")
-            
-    domain_dict = {d:1 for d in domain_verses}
-            
-    return domain_dict
-    
-def domain_distribution(triggers):
-    """
-    Parameters:
-    ===========
-    triggers: list of triggers. Each trigger has four parts:
-        1) text: the text where the trigger should be searched for
-        2) category: category of the trigger (Word w, Morph m, Regular expression r)
-        3) string: the actual string that should be searched for (either a word, character sequence
-            or a regular expression
-        4) polarity: whether the trigger should ignore (0) the resp. verse or include (1) it 
-            in the domain
-    """
-    
-    domain_verses = collections.defaultdict(int)
-    
-    for text,category,string,polarity in triggers:
-        print(text,category,string,polarity)
-        t = reader.ParText(text,portions=range(40,67))
-        wordforms_by_verses = t.wordforms_verses()
-        substrings_by_wordforms = t.substrings_wordforms()
-        string = string.lower()
-        
-        def addtodict(list_of_verses):
-            for verse in list_of_verses:
-                domain_verses[verse] += 1
-        def remfromdict(list_of_verses):
-            for verse in list_of_verses:
-                del domain_verses[verse]
-        
-        if category.lower() == "w":
-            if polarity == 0:
-                remfromdict(wordforms_by_verses[string])
-            else:
-                addtodict(wordforms_by_verses[string])
-        elif category.lower() == "m":
-            string_wordforms = substrings_by_wordforms[string]
-            for string_wordform in string_wordforms:
-                string_verses = wordforms_by_verses[string_wordform]
-                if polarity == 0:
-                    remfromdict(string_verses)
-                else:
-                    addtodict(string_verses)
-        elif category.lower() == "r":
-            pass
-        else:
-            print("Error!")
-            
-    domain_dict = {d:(domain_verses[d],1) for d in domain_verses}
-            
-    return domain_dict
+import re
     
 class DomainDist():
+    """
+    A generalized domain distribution where each verse is given a value between 0 an 1 to 
+    indicate its relevance with respect to the input search terms. Search terms can be given
+    for one or more texts/languages.
+    """
 
     def __init__(self,domain_name,filename):
+        """
+        Construct a new domain distribution on the basis of search terms in a given TSV file. The
+        structure of the file is as follows (separated by TABs):
         
+        File    marker_type marker  polarity
+        eng w   not 0
+        
+        Marker types can be w (wordforms), m (morphs) or r (regular expressions). Markers are 
+        strings of search terms to look for. Polarity indicates whether the given marker must 
+        occur in the verse (marked with 0 or nothing as default) or must not occur in the verse 
+        (marked with 1).
+        
+        :param domain_name: the domain name given to this domain distribution (e.g., negation)
+        
+        :param filename: the name of the file where the search terms and texts are given. 
+        """
+        
+        # open file and convert input data to a list of InputMarker objects
         fh = open(filename).readlines()
         categories = fh[1].strip().split('\t')
         input_markers = list()
@@ -116,10 +44,10 @@ class DomainDist():
             if len(parameters) == 4: polarity = parameters[3]
             marker = InputMarker(domain_name,parameters[0],parameters[0][:3],parameters[1],
                 parameters[2],int(polarity))
-            #text,iso,type,form,
             input_markers.append(marker)
             
-        # sort markers to make sure that negative markers
+        # sort markers to make sure that negative markers are listed at the end to delete all
+        # verses where they occur
         input_markers.sort(key=lambda x: (x.text,x.polarity))
         self.input_markers = input_markers
         
@@ -127,21 +55,18 @@ class DomainDist():
         text_by_markers = collections.defaultdict(list)
         for input_marker in input_markers:
             text_by_markers[input_marker.text].append(input_marker)
-            
         self.text_by_markers = text_by_markers
-        print(text_by_markers)
         
-        def addtodict(list_of_verses):
+        # convenience functions to add or remove a given list of verses
+        def addtodict(list_of_verses,form):
             for verse in list_of_verses:
-                domain_verses[verse] += 1
+                domain_verses[verse].add(form)
         def remfromdict(list_of_verses):
             for verse in list_of_verses:
-                domain_verses[verse] = 0
+                domain_verses[verse].clear()
                 
         domain_verses_texts = dict()
-        domain_verses_by_texts = collections.defaultdict(lambda: collections.defaultdict(float))
         all_relevant_verses = set()
-        domain_dist = dict()
         
         # go through each text and extract the distribution
         for text in text_by_markers:
@@ -149,7 +74,7 @@ class DomainDist():
             wordforms_by_verses = t.wordforms_verses()
             substrings_by_wordforms = t.substrings_wordforms()
             
-            domain_verses = collections.defaultdict(int)
+            domain_verses = collections.defaultdict(set)
             markers = list()
             
             # go through each marker in the respective text
@@ -158,190 +83,153 @@ class DomainDist():
                 string = marker.form
                 category = marker.type
                 polarity = marker.polarity
-                print(polarity)
                 if polarity == 0: markers.append(string) 
+                rel_verses = list()
                 if category.lower() == "w":
-                    if polarity == 1:
-                        remfromdict(wordforms_by_verses[string])
-                    else:
-                        addtodict(wordforms_by_verses[string])
+                    rel_verses = wordforms_by_verses[string]
                 elif category.lower() == "m":
                     string_wordforms = substrings_by_wordforms[string]
                     for string_wordform in string_wordforms:
-                        string_verses = wordforms_by_verses[string_wordform]
-                        if polarity == 1:
-                            remfromdict(string_verses)
-                        else:
-                            addtodict(string_verses)
+                        rel_verses.extend(wordforms_by_verses[string_wordform])
                 elif category.lower() == "r":
-                    pass
+                    verse_tuples = t.get_verses_strings()
+                    regex = re.compile(string)
+                    rel_verses = [v[0] for v in verse_tuples for m in [regex.search(v[1])] if m]
                 else:
                     print("Error: This marker category does not exist!")
+                    
+                if polarity == 1:
+                    remfromdict(rel_verses)
+                else:
+                    addtodict(rel_verses,string)
             
-            # normalize all extracted verses by the number of markers that are present in there
+            # normalize all extracted verses by the number of markers that are present in the verse
+            # in comparison to the overall number of markers for the respective text
             domain_verses_normalized = dict()
             for verse in domain_verses:
-                if domain_verses[verse] > 0:
-                    types_in_verse = t[verse]
-                    markers_in_verse = sum(int(m in types_in_verse) for m in markers)
+                if domain_verses[verse]:
+                    markers_in_verse = len(domain_verses[verse])
                     domain_verses_normalized[verse] = markers_in_verse/len(markers)
+                    #print(text,verse,markers_in_verse,domain_verses[verse],markers,markers_in_verse/len(markers))
                     
-                    domain_verses_by_texts[verse][text] = markers_in_verse/len(markers)
-                    print(text,verse,markers_in_verse,domain_verses[verse],markers,markers_in_verse/len(markers))
-                    
-            domain_verses_texts[text] = domain_verses
+            domain_verses_texts[text] = domain_verses_normalized
             all_relevant_verses.update(domain_verses.keys())
             
         # normalize the individual values over all texts
+        # the normalization is in terms of the number of overall number of texts not the 
+        # texts that show the respective verse as relevant (marked in the count variable) 
+        domain_dist = dict()
         for verse in all_relevant_verses:
             count = 0 
             value = 0
             for t in domain_verses_texts:
                 if verse in domain_verses_texts[t]:
-                    count =+ 1
+                    count += 1
                     value += domain_verses_texts[t][verse]
-            domain_dist[verse] = value/count
+            if count > 0: domain_dist[verse] = value/len(domain_verses_texts)
             
         self.domain_dist = domain_dist
-        self.domain_verses_by_texts = domain_verses_by_texts
+        #print(domain_dist)
         
-    
-class DomainDistComp():
-
-    def __init__(
-        self,
-        text,
-        domain,
-        paradigm=0,
-        threshold=1,
-        slots=1,
-        extracted_types="w",
-        domain_name = "x"
-        ):
-        """Compares a given text to a domain (or search) distribution.
-        Parameters:
-        ===========
-        text: the text in ParText format that should be compared
-        domain: the domain distribution with which it is to be compared
+    def __str__(self):
+        return "\n".join("{} {}".format(d,self.domain_dist[d]) for d in self.domain_dist)
+        
+    def compare(self,text,method=measures.jaccard,thresh=0.2):
         """
-    
-        wordforms_verses2 = text.wordforms_verses()
-        verses = text.get_verses()
-        self.domain = domain
-        self.text = text
-        self.domain_name = domain_name
-        self.extracted_types = extracted_types
+        Compares a given search distribution to the input text.
         
+        :param text: filename of the text to be compared with the search distribution
+        :type text: ParText object
+        :param method: method to be used for the association measure
+        """
+        
+        verses = text.get_verses()
         translation = collections.defaultdict(lambda: collections.defaultdict(int))
         
-        for verse in domain:
+        wordforms_dict = text.get_lexicon()
+        
+        for verse in self.domain_dist:
             if verse in verses:
                 for word in set(verses[verse]):
                     translation[word][verse] += 1
-                    #translation[word][verse] = domain[verse][0]
-          
-        self.translation = translation
-                
-    def extract_marker(
-        self,
-        method=measures.jaccard
-        ):
-        
-        
-        best_candidate = (0,'')
-        domain = self.copied_domain
-        a = sum([domain[d][1] for d in domain])
-        a_old = sum([self.domain[d][1] for d in self.domain])
-        values = dict()
-        n = len(self.text)
-        
-        for wordform in self.wordforms:
-        
-            b = len(self.wordforms_dict[wordform])
-            ab = sum([domain[d][1] * self.translation[wordform][d] for d in domain])
-            
-                
-            
-            currvalue = method(ab,a,b,n)
-            
-            # check whether the entire domain would be more suitable for the wordform
-            entire_value = method(ab,a_old,b,n)
-            amplitude = ab/a_old
-            dedication = ab/b
-            if entire_value > currvalue:
-                continue
-            
-            if currvalue >= best_candidate[0]:
-                best_candidate = (currvalue,wordform,type,amplitude,dedication)
-                
-        self.extracted_markers.append((best_candidate[1],best_candidate[2]))
-        print(best_candidate)
-        
-        self.wordforms.remove(best_candidate[1])
-        
-        
-        return best_candidate
-        
-    def iterative_search(self,method=measures.jaccard,thresh=0.2):
-        # define variables for iteration
+                    
+        wordforms = list(translation.keys())
+        current_slot = 0
         list_of_markers = list()
         
-        #self.substrings_by_wordforms = substrings_to_wordforms(self.translation.keys())
         
-        self.wordforms = list(self.translation.keys())
-        self.wordforms_dict = self.text.get_lexicon()
-        self.copied_translation = copy(self.translation)
-        self.extracted_markers = list()
-        self.current_slot = 0
-        
-        # iteration part
-        while True:
-            self.copied_domain = copy(self.domain)
-            self.current_rank = 0
-        
-            while True:
-                #print(self.wordforms)
-                if len(self.wordforms) == 0:
-                    break
-                best_cand = self.extract_marker(method=method)
-                if best_cand[0] < thresh:
-                    self.current_slot += 1
-                    break
+        def get_best_candidate():
+            """
+            Auxiliary method to determine the current best candidate.
+            """
+            
+            best_candidate = (0,'')
+            a = sum(domain_copy[d] for d in domain_copy)
+            a_old = sum(self.domain_dist[d] for d in self.domain_dist)
+            n = len(text)
+            
+            for wordform in wordforms:
+                #print(wordform)
+                b = len(wordforms_dict[wordform])
+                ab = sum(domain_copy[d] * translation[wordform][d] for d in domain_copy)
                 
-                #print(best_cand)
-                
-                # clean up the rest domain to remove marker entries
-                marker_to_remove = best_cand[1]
-                curr_verses = list(self.copied_domain.keys())
-                for d in curr_verses:
-                    number_occurrences = self.copied_translation[marker_to_remove][d]
-                    occurrences_in_domain = self.copied_domain[d][0]
-                    diff = occurrences_in_domain - number_occurrences
-                    if diff == 0:
-                        del self.copied_domain[d]
-                    elif diff > 0:
-                        self.copied_domain[d] = (diff,1)
-                    else:
-                        del self.copied_domain[d]
-                        #print("Error: diff smaller than zero!")
+                currvalue = method(ab,a,b,n)
+                #print(currvalue)
+            
+                # check whether the entire domain would be more suitable for the wordform
+                entire_value = method(ab,a_old,b,n)
+                amplitude = ab/a_old
+                dedication = ab/b
+                if entire_value > currvalue:
+                    continue
                     
+                if currvalue >= best_candidate[0]:
+                    best_candidate = (currvalue,wordform,amplitude,dedication)
                 
-                marker = Marker(self.domain_name,self.text.filename,self.text.iso,self.extracted_types,
-                    best_cand[1],self.current_slot,self.current_rank,best_cand[0],best_cand[3],best_cand[4])
-                self.current_rank += 1
-                list_of_markers.append(marker)
-                
-            if self.current_rank == 0:
-                break
+            
+            wordforms.remove(best_candidate[1])
+            return best_candidate
+            
+            
+        while True:
         
-        # return
-        marker_list = MarkerList(self.domain_name,list_of_markers,self.text.iso)
-        return marker_list
+            domain_copy = copy(self.domain_dist)
+            current_rank = 0
+            
+            while True:
+                if len(wordforms) == 0:
+                    break
+                    
+                best_cand = get_best_candidate()
+                if best_cand[0] < thresh:
+                    current_slot += 1
+                    break
+                
+                # clean up the rest of the domain to remove marker entries
+                marker_to_remove = best_cand[1]
+                curr_verses = list(domain_copy.keys())
+                for v in curr_verses:
+                    nr_occurrences = translation[marker_to_remove][v]
+                    occ_in_domain = domain_copy[v]
+                    diff = occ_in_domain - nr_occurrences
+                    if diff == 0:
+                        #del domain_copy[v]
+                        translation[marker_to_remove][v] = 0
+                    elif diff > 0:
+                        #domain_copy[v] = diff
+                        translation[marker_to_remove][v] = diff
+                    else:
+                        print("ERROR: diff smaller than zero")
+                        
+                print(best_cand)
+                
+            if current_rank == 0:
+                break
+                
         
 class Marker():
 
-    def __init__(self,domain,text,iso,type,form,slot=0,rank=0,extraction_value=0,amplitude=0,
-        dedication=0):
+    def __init__(self,domain,text,iso,type,form):
         """
         domain: 
         text: name of text where the marker has been extracted
@@ -359,32 +247,33 @@ class Marker():
         self.iso = iso
         self.type = type
         self.form = form
-        self.slot = slot
-        self.rank = rank
-        self.extraction_value = extraction_value
-        self.amplitude = amplitude
-        self.dedication = dedication
         
     def __str__(self):
         
-        output_list = [self.domain,self.type,self.form,self.slot,self.rank,self.extraction_value,
-            self.amplitude,self.dedication]
-        return "{} {} {} {} {} {} {} {}".format(*output_list)
+        output_list = [self.domain,self.type,self.form]
+        return "{} {} {}".format(*output_list)
         
 class InputMarker(Marker):
 
     def __init__(self,domain,text,iso,type,form,polarity):
-        self.domain = domain
-        self.text = text
-        self.iso = iso
-        self.type = type
-        self.form = form
+        Marker.__init__(self,domain,text,iso,type,form)
         self.polarity = polarity
         
     def __str__(self):
         
         output_list = [self.domain,self.text,self.type,self.form,self.polarity]
         return "{} {} {} {} {}".format(*output_list)
+        
+class OutputMarker(Marker):
+
+    def __init__(self,domain,text,iso,type,form,slot=0,rank=0,extraction_value=0,amplitude=0,
+        dedication=0):
+        Marker.__init__(self,domain,text,iso,type,form)
+        self.slot = slot
+        self.rank = rank
+        self.extraction_value = extraction_value
+        self.amplitude = amplitude
+        self.dedication = dedication
     
 class MarkerList():
 
