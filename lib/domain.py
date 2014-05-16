@@ -115,8 +115,8 @@ class DomainDist():
                     else:
                         addtodict(rel_verses,string)
                 
-                # normalize all extracted verses by the number of markers that are present in the verse
-                # in comparison to the overall number of markers for the respective text
+                # normalize all extracted verses by the number of markers that are present in the 
+                # verse in comparison to the overall number of markers for the respective text.
                 domain_verses_normalized = dict()
                 for verse in domain_verses:
                     if domain_verses[verse]:
@@ -137,7 +137,7 @@ class DomainDist():
                 weightvalue = 0
                 markercount = 0
                 for t in domain_verses_texts:
-                    if verse in text_verses[t]:
+                    if verse in text_verses[t]: # ignore texts that don't have this verse
                         textcount += 1
                         if verse in domain_verses_texts[t]:
                             weightvalue += domain_verses_texts[t][verse][1]
@@ -186,12 +186,10 @@ class DomainDist():
             n = len(text)
             
             for wordform in wordforms:
-                #print(wordform)
                 b = len(wordforms_dict[wordform])
                 ab = sum(domain_copy[d][1] * translation[wordform][d] for d in domain_copy)
                 
                 currvalue = method(ab,a,b,n)
-                #print(currvalue)
             
                 # check whether the entire domain would be more suitable for the wordform
                 entire_value = method(ab,a_old,b,n)
@@ -203,8 +201,6 @@ class DomainDist():
                 if currvalue >= best_candidate[0]:
                     best_candidate = (currvalue,wordform,amplitude,dedication)
                 
-            
-            wordforms.remove(best_candidate[1])
             return best_candidate
         
         verses = text.get_verses()
@@ -237,16 +233,15 @@ class DomainDist():
                 
                 # clean up the rest of the domain to remove marker entries
                 marker_to_remove = best_cand[1]
+                wordforms.remove(marker_to_remove)
                 curr_verses = list(domain_copy.keys())
                 for v in curr_verses:
                     nr_occurrences = translation[marker_to_remove][v]
                     occ_in_domain = domain_copy[v][0]
                     diff = occ_in_domain - nr_occurrences
                     if diff == 0:
-                        #del domain_copy[v]
                         translation[marker_to_remove][v] = 0
                     elif diff > 0:
-                        #domain_copy[v] = diff
                         translation[marker_to_remove][v] = diff
                     else:
                         print("ERROR: diff smaller than zero")
@@ -265,11 +260,6 @@ class Marker():
         text: name of text where the marker has been extracted
         type: w (word), m (morph), r (regular expression), f (taken from file with distribution)
         form: actual form of the marker
-        slot: 
-        rank: rank within the slot
-        extraction_value: value taken from the association measure
-        amplitude: relationship of marker within the domain
-        dedication: relationship of marker in the domain in comparison to other uses of the marker
         """
         
         self.domain = domain
@@ -286,6 +276,9 @@ class Marker():
 class InputMarker(Marker):
 
     def __init__(self,domain,text,iso,type,form,polarity):
+        """
+        polarity: whether the marker should be present (0) or absent (1) in the verse
+        """
         Marker.__init__(self,domain,text,iso,type,form)
         self.polarity = polarity
         
@@ -298,6 +291,13 @@ class OutputMarker(Marker):
 
     def __init__(self,domain,text,iso,type,form,slot=0,rank=0,extraction_value=0,amplitude=0,
         dedication=0):
+        """
+        slot: distributional (not morphotactic) slots based on the iterative search
+        rank: rank within the slot
+        extraction_value: value taken from the association measure
+        amplitude: relationship of marker within the domain
+        dedication: relationship of marker in the domain in comparison to other uses of the marker
+        """
         Marker.__init__(self,domain,text,iso,type,form)
         self.slot = slot
         self.rank = rank
@@ -363,7 +363,9 @@ class MarkerList():
         return "\n".join(output_lines)
             
 def substrings_to_wordforms(wordforms):
-    """Returns a dictionary of 
+    """Returns a dictionary of substrings as keys and the wordforms in which they occur as values.
+    
+    :param wordforms: list of wordforms
     """
     
     substrings_by_wordforms = collections.defaultdict(set)

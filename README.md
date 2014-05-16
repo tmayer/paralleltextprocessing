@@ -83,6 +83,12 @@ line). The first column gives the verse ID, the second column gives the (average
 occurrence of the given marker(s) in the verse, the third column gives the (average) weight for 
 this verse.
 
+```
+40001019	1	0.5
+40001020	1	1.0
+40001025	1	1.0
+```
+
 ### Finding the generalized search distribution
 
 The input file potentially contains search terms for different input texts. In this case, all 
