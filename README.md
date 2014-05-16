@@ -8,39 +8,39 @@ Python Parallel Text Processing
 * import the domain.py module:
 
 ```
-    import domain
+import domain
 ```
 
 * construct an object of class *DomainDist* by giving a name for the domain (e.g., "negation") and 
 a file where the search terms are listed (e.g., "neg_domain.txt" in the resp. folder):
 ```
-    d = domain.DomainDist("negation","../files/neg_domain.txt")
+d = domain.DomainDist("negation","../files/neg_domain.txt")
 ```
 
 * files with search terms have the following structure (elements are separated by TABs):
 
 ```
-    File    marker_type marker  polarity
-    deu w   nicht   0
-    eng m   n't 0
+File    marker_type marker  polarity
+deu w   nicht   0
+eng m   n't 0
 ```
 
 * have a look at the generalized distribution:
 
 ```
-    print(d)
+print(d)
 ```
 
 * save the distribution to a tab separated file (".tsv")
 
 ```
-    d.save()
+d.save()
 ```
 
 * reload a saved distribution in tsv format from a given file
 
 ```
-    d1 = domain.DomainDist("negation","negation_dist.tsv")
+d1 = domain.DomainDist("negation","negation_dist.tsv")
 ```
 
 ## 2. Compare a given DomainDist to a Bible text file
@@ -48,9 +48,9 @@ a file where the search terms are listed (e.g., "neg_domain.txt" in the resp. fo
 * compare it to a given text in ParText format:
 
 ```
-    import reader
-    text = reader.ParText("fra")
-    d.compare(text)
+import reader
+text = reader.ParText("fra")
+d.compare(text)
 ```
 
 # Description
@@ -64,9 +64,9 @@ An object of class DomainDist is instantiated by giving the domain a meaningful 
 search terms have the following structure (note that the first line is the header):
 
 ```
-    File    marker_type marker  polarity
-    deu w   nicht   0
-    eng w   not 0
+File    marker_type marker  polarity
+deu w   nicht   0
+eng w   not 0
 ```
 
 The first column indicates the text in which the marker has to be searched. The second column 
