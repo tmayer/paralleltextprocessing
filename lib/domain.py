@@ -31,8 +31,8 @@ class DomainDist():
         (marked with 1).
         
         :param domain_name: the domain name given to this domain distribution (e.g., negation)
-        
         :param filename: the name of the file where the search terms and texts are given. 
+        
         """
         
         self.domain_name = domain_name
