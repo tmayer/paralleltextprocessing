@@ -152,6 +152,12 @@ class DomainDist():
         return "\n".join("{}\t{}\t{}".format(d,self.domain_dist[d][0],self.domain_dist[d][1]) 
             for d in sorted(self.domain_dist))
             
+    def __len__(self):
+        return len(self.domain_dist)
+        
+    def __getitem__(self,item):
+        return self.domain_dist[item]
+            
     def save(self,filename="dist.tsv"):
         """
         Saves the domain distribution as a csv file where each line consists of three parts 
@@ -217,11 +223,13 @@ class DomainDist():
         current_slot = 0
         list_of_markers = list()
 
+        # try different slots
         while True:
         
             domain_copy = copy(self.domain_dist)
             current_rank = 0
             
+            # try different ranks within the slots
             while True:
                 if len(wordforms) == 0:
                     break
@@ -246,7 +254,8 @@ class DomainDist():
                     else:
                         print("ERROR: diff smaller than zero")
                         
-                print(best_cand)
+                print(best_cand,current_slot,current_rank)
+                current_rank += 1
                 
             if current_rank == 0:
                 break

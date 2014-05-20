@@ -3,10 +3,11 @@ __date__="2014-04-22"
 
 import collections
 import settings
-from scipy.sparse import lil_matrix, csc_matrix, coo_matrix
-from scipy.io import mmread, mmwrite
-import scipy.special
-import numpy as np
+# commented out for the time being
+#from scipy.sparse import lil_matrix, csc_matrix, coo_matrix
+#from scipy.io import mmread, mmwrite
+#import scipy.special
+#import numpy as np
 import re
 import os
 
