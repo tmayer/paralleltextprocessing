@@ -208,8 +208,115 @@ class DomainDist():
                     best_candidate = (currvalue,wordform,amplitude,dedication)
                 
             return best_candidate
+            
+        verses = text.get_verses()
+        translation = collections.defaultdict(lambda: collections.defaultdict(int))
+        wordforms_dict = text.get_lexicon()
+        
+        
+        for verse in self.domain_dist:
+            if verse in verses:
+                for word in verses[verse]:
+                    translation[word][verse] += 1
+                    
+                    
+        wordforms = list(translation.keys())
+        
+        current_slot = 1
+        
+        tokens = sum(self.domain_dist[d][0] for d in self.domain_dist)
+        print("Tokens: ", tokens)
+        
+        # try different slots
+        while True:
+        
+            domain_copy = copy(self.domain_dist)
+            current_rank = 0
+            
+            
+            # try different ranks within the slots
+            while True:
+                if len(wordforms) == 0:
+                    break
+                    
+                best_cand = get_best_candidate()
+                #print(best_cand,current_slot,current_rank,end="\t")
+                if best_cand[0] < thresh:
+                    current_slot += 1
+                    #print("not accepted")
+                    break
+                    
+                #print("accepted")
+                print(best_cand)
+                    
+                #print(domain_copy)
+                
+                # clean up the rest of the domain to remove marker entries
+                marker_to_remove = best_cand[1]
+                wordforms.remove(marker_to_remove)
+                curr_verses = list(domain_copy.keys())
+                total_occurrences = 0
+                for v in curr_verses:
+                    nr_occurrences = translation[marker_to_remove][v]
+                    total_occurrences += nr_occurrences
+                    occ_in_domain = domain_copy[v][0]
+                    diff = occ_in_domain - nr_occurrences
+                    if diff == 0:
+                        translation[marker_to_remove][v] = 0
+                        del domain_copy[v]
+                    elif diff > 0:
+                        translation[marker_to_remove][v] = diff
+                        tmp = domain_copy[v]
+                        domain_copy[v] = (diff,tmp[1])
+                    else:
+                        print("ERROR: ",v,domain_copy[v][0],nr_occurrences)
+                        
+                print(best_cand,current_slot,current_rank,total_occurrences)
+                current_rank += 1
+                
+            if current_rank == 0:
+                break
+        
+        
+    def compare_old(self,text,method=measures.jaccard,thresh=0.2):
+        """
+        Compares a given search distribution to the input text.
+        
+        :param text: filename of the text to be compared with the search distribution
+        :type text: ParText object
+        :param method: method to be used for the association measure
+        """
+        
+        def get_best_candidate():
+            """
+            Auxiliary method to determine the current best candidate.
+            """
+            
+            best_candidate = (0,'')
+            a = sum(domain_copy[d][0] for d in domain_copy)
+            a_old = sum(self.domain_dist[d][0] for d in self.domain_dist)
+            n = len(text)
+            
+            for wordform in wordforms:
+                b = len(wordforms_dict[wordform])
+                ab = sum(domain_copy[d][1] * translation[wordform][d] for d in domain_copy)
+                
+                currvalue = method(ab,a,b,n)
+            
+                # check whether the entire domain would be more suitable for the wordform
+                entire_value = method(ab,a_old,b,n)
+                amplitude = ab/a_old
+                dedication = ab/b
+                if entire_value > currvalue:
+                    continue
+                    
+                if currvalue >= best_candidate[0]:
+                    best_candidate = (currvalue,wordform,amplitude,dedication)
+                
+            return best_candidate
         
         verses = text.get_verses()
+        
         translation = collections.defaultdict(lambda: collections.defaultdict(int))
         
         wordforms_dict = text.get_lexicon()
@@ -220,6 +327,9 @@ class DomainDist():
                     translation[word][verse] += 1
                     
         wordforms = list(translation.keys())
+        
+    
+        
         current_slot = 0
         list_of_markers = list()
 
@@ -229,15 +339,23 @@ class DomainDist():
             domain_copy = copy(self.domain_dist)
             current_rank = 0
             
+            
             # try different ranks within the slots
             while True:
                 if len(wordforms) == 0:
                     break
                     
                 best_cand = get_best_candidate()
+                #print(best_cand,current_slot,current_rank,end="\t")
                 if best_cand[0] < thresh:
                     current_slot += 1
+                    #print("not accepted")
                     break
+                    
+                #print("accepted")
+                    
+                print(best_cand,current_slot,current_rank)
+                #print(domain_copy)
                 
                 # clean up the rest of the domain to remove marker entries
                 marker_to_remove = best_cand[1]
@@ -249,12 +367,15 @@ class DomainDist():
                     diff = occ_in_domain - nr_occurrences
                     if diff == 0:
                         translation[marker_to_remove][v] = 0
+                        del domain_copy[v]
                     elif diff > 0:
                         translation[marker_to_remove][v] = diff
+                        tmp = domain_copy[v]
+                        domain_copy[v] = (diff,tmp[1])
                     else:
                         print("ERROR: diff smaller than zero")
                         
-                print(best_cand,current_slot,current_rank)
+                #print(best_cand,current_slot,current_rank)
                 current_rank += 1
                 
             if current_rank == 0:
@@ -391,9 +512,8 @@ def substrings_to_wordforms(wordforms):
             
 if __name__ == "__main__":
     
-    #dv = domain_distribution([("eng","w","went",1)])
-    #text = reader.ParText("deu",portions=range(40,67))
-    #d = DomainDistComp(text,dv,domain_name="negation")
-    #ml = d.iterative_search(method=measures.jaccard,thresh=0.2)
     d = DomainDist("negation","../files/neg_domain.txt")
     #print(d)
+    
+    text = reader.ParText("eng")
+    d.compare(text)

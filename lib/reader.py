@@ -4,10 +4,14 @@ __date__="2014-04-22"
 import collections
 import settings
 # commented out for the time being
-#from scipy.sparse import lil_matrix, csc_matrix, coo_matrix
-#from scipy.io import mmread, mmwrite
-#import scipy.special
-#import numpy as np
+try:
+    from scipy.sparse import lil_matrix, csc_matrix, coo_matrix
+    from scipy.io import mmread, mmwrite
+    import scipy.special
+    import numpy as np
+    import pandas as pd
+except:
+    pass
 import re
 import os
 
@@ -177,35 +181,18 @@ class ParText():
                 
         sparse = coo_matrix((data,(rowdata,coldata)),dtype="int16",shape=(len(wordforms),99999999))
 
-        return sparse,wordforms_by_number
+        return sparse,wordforms,wordforms_by_number
+        
+
         
         
             
 if __name__ == "__main__":
+    pass
     
-    text = ParText("deu")
     
     
-    """
-    text1 = ParText("deu-x-bible-elberfelder1871-v1.txt")
-    matrix1,wordforms1 = text1.get_matrix()
-    print("and again...")
-    text2 = ParText("eng-x-bible-darby-v1.txt")
-    matrix2,wordforms2 = text2.get_matrix()
-    print("collecting common verses...")
-    verseids1 = text1.get_verseids()
-    verseids2 = text2.get_verseids()
-    print("what is common?")
-    common_verseids = list(set(verseids1).intersection(set(verseids2)))
-    print("building csc matrices")
-    cv = np.array(common_verseids)
-    m1 = csc_matrix(matrix1,dtype="int16")[:,cv]
-    m2 = csc_matrix(matrix2,dtype="int16")[:,cv]
-    matrix_obs = m1 * m2.T
-    vector1 = matrix1.sum(1)
-    vector2 = matrix2.sum(1)
-    matrix_exp = np.outer(vector1,vector2) / len(common_verseids)
-    """
+   
     
 
     
