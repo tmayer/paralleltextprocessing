@@ -1,0 +1,8 @@
+﻿File	marker_type	marker	polarity
+tpi	w	laik
+hat	w	vle
+kri	w	want
+vie	w	muốn
+srm	w	kë
+wol	r	\bbëgg.*
+wim	w	kaangk
